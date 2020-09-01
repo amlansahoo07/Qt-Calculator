@@ -55,7 +55,7 @@ Calculator::Calculator(QWidget *parent) :
     // reset for the first time
     acButtonClicked();
 
-    setWindowTitle("Minhaz Calc");
+    setWindowTitle("Calculator");
 }
 
 Calculator::~Calculator()
