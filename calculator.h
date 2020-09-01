@@ -1,27 +1,40 @@
 #ifndef CALCULATOR_H
 #define CALCULATOR_H
 
-#include <QMainWindow>
+#include <QDialog>
+#include <QDebug>
+#include "lepton/Lepton.h"
 
-QT_BEGIN_NAMESPACE
-namespace Ui { class Calculator; }
-QT_END_NAMESPACE
+namespace Ui {
+class Calculator;
+}
 
-class Calculator : public QMainWindow
+class Calculator : public QDialog
 {
     Q_OBJECT
 
 public:
-    Calculator(QWidget *parent = nullptr);
+    explicit Calculator(QWidget *parent = 0);
     ~Calculator();
+
+private slots:
+    void numberButtonClicked();
+    void operationButtonClicked();
+    void parenthesisButtonClicked();
+    void functionButtonClicked();
+    void removeLastChar();
+    void powerButtonClicked();
+    void acButtonClicked();
+    void memoryButtonClicked();
+    void factButtonClicked();
+    void dotButtonClicked();
+    void evaluate();
 
 private:
     Ui::Calculator *ui;
-
-private slots:
-    void NumPressed();
-    void MathButtonPressed();
-    void EqualButtonPressed();
-    void ChangeNumberSign();
+    Lepton::Parser parser;
+    bool clear;
+    qreal memory;
 };
+
 #endif // CALCULATOR_H

@@ -1,48 +1,61 @@
 #include "calculator.h"
 #include "ui_calculator.h"
+#include "QRegularExpression"
 
-//Holds current value of calculation
-double calcVal = 0.0;
-
-//Trigger for last clicked Math Button
-bool divTrigger = false;
-bool multTrigger = false;
-bool addTrigger = false;
-bool subTrigger = false;
-
-//Constructor
-Calculator::Calculator(QWidget *parent)
-    : QMainWindow(parent)
-    , ui(new Ui::Calculator)
+Calculator::Calculator(QWidget *parent) :
+    QDialog(parent),
+    ui(new Ui::Calculator)
 {
+    clear = false;
+
     ui->setupUi(this);
 
-    //Put 0.0 in Display
-    ui->Display->setText(QString::number(calcVal));
+    connect(ui->num_0, SIGNAL(clicked()), this, SLOT(numberButtonClicked()));
+    connect(ui->num_1, SIGNAL(clicked()), this, SLOT(numberButtonClicked()));
+    connect(ui->num_2, SIGNAL(clicked()), this, SLOT(numberButtonClicked()));
+    connect(ui->num_3, SIGNAL(clicked()), this, SLOT(numberButtonClicked()));
+    connect(ui->num_4, SIGNAL(clicked()), this, SLOT(numberButtonClicked()));
+    connect(ui->num_5, SIGNAL(clicked()), this, SLOT(numberButtonClicked()));
+    connect(ui->num_6, SIGNAL(clicked()), this, SLOT(numberButtonClicked()));
+    connect(ui->num_7, SIGNAL(clicked()), this, SLOT(numberButtonClicked()));
+    connect(ui->num_8, SIGNAL(clicked()), this, SLOT(numberButtonClicked()));
+    connect(ui->num_9, SIGNAL(clicked()), this, SLOT(numberButtonClicked()));
 
-    //Holding references to all the number buttons
-    QPushButton *numButtons[10];
+    connect(ui->expr_add, SIGNAL(clicked()), this, SLOT(operationButtonClicked()));
+    connect(ui->expr_sub, SIGNAL(clicked()), this, SLOT(operationButtonClicked()));
+    connect(ui->expr_mul, SIGNAL(clicked()), this, SLOT(operationButtonClicked()));
+    connect(ui->expr_div, SIGNAL(clicked()), this, SLOT(operationButtonClicked()));
 
-    //Cycle through locating the buttons
-    for(int i=0; i<10; i++){
-        QString butName = "Button" + QString::number(i);
+    connect(ui->paren_begin, SIGNAL(clicked()), this, SLOT(parenthesisButtonClicked()));
+    connect(ui->paren_end, SIGNAL(clicked()), this, SLOT(parenthesisButtonClicked()));
 
-        numButtons[i] = Calculator::findChild<QPushButton *>(butName);
+    connect(ui->func_sin, SIGNAL(clicked()), this, SLOT(functionButtonClicked()));
+    connect(ui->func_cos, SIGNAL(clicked()), this, SLOT(functionButtonClicked()));
+    connect(ui->func_tan, SIGNAL(clicked()), this, SLOT(functionButtonClicked()));
+    connect(ui->func_sinh, SIGNAL(clicked()), this, SLOT(functionButtonClicked()));
+    connect(ui->func_cosh, SIGNAL(clicked()), this, SLOT(functionButtonClicked()));
+    connect(ui->func_tanh, SIGNAL(clicked()), this, SLOT(functionButtonClicked()));
 
-        connect(numButtons[i], SIGNAL(released()), this, SLOT(NumPressed()));
-    }
+    connect(ui->pow_2, SIGNAL(clicked()), this, SLOT(powerButtonClicked()));
+    connect(ui->pow_3, SIGNAL(clicked()), this, SLOT(powerButtonClicked()));
+    connect(ui->pow_n, SIGNAL(clicked()), this, SLOT(powerButtonClicked()));
+    connect(ui->pow_half, SIGNAL(clicked()), this, SLOT(powerButtonClicked()));
+    connect(ui->pow_minus_one, SIGNAL(clicked()), this, SLOT(powerButtonClicked()));
 
-    //Connect signal and slots for math buttons
-    connect(ui->Add, SIGNAL(released()), this, SLOT(MathButtonPressed()));
-    connect(ui->Subtract, SIGNAL(released()), this, SLOT(MathButtonPressed()));
-    connect(ui->Multiply, SIGNAL(released()), this, SLOT(MathButtonPressed()));
-    connect(ui->Divide, SIGNAL(released()), this, SLOT(MathButtonPressed()));
+    connect(ui->memory_clear, SIGNAL(clicked()), this, SLOT(memoryButtonClicked()));
+    connect(ui->memory_save, SIGNAL(clicked()), this, SLOT(memoryButtonClicked()));
+    connect(ui->memory_recall, SIGNAL(clicked()), this, SLOT(memoryButtonClicked()));
 
-    //Connect Equal Button
-    connect(ui->Equals, SIGNAL(released()), this, SLOT(EqualButtonPressed()));
+    connect(ui->backspace, SIGNAL(clicked()), this, SLOT(removeLastChar()));
+    connect(ui->num_dot, SIGNAL(clicked()), this, SLOT(dotButtonClicked()));
+    connect(ui->eval, SIGNAL(clicked()), this, SLOT(evaluate()));
+    connect(ui->factorial, SIGNAL(clicked()), this, SLOT(factButtonClicked()));
+    connect(ui->all_clear, SIGNAL(clicked()), this, SLOT(acButtonClicked()));
 
-    //Connect Change Sign
-    connect(ui->ChangeSign, SIGNAL(released()), this, SLOT(ChangeNumberSign()));
+    // reset for the first time
+    acButtonClicked();
+
+    setWindowTitle("Minhaz Calc");
 }
 
 Calculator::~Calculator()
@@ -50,83 +63,188 @@ Calculator::~Calculator()
     delete ui;
 }
 
-void Calculator::NumPressed(){
-    QPushButton *button = (QPushButton *)sender();
+void Calculator::numberButtonClicked()
+{
+    QString numString = QObject::sender()->objectName().remove("num_");
 
-    QString butVal = button->text();
+    if(clear)
+    {
+        clear = false;
+        ui->expression->clear();
+    }
+    ui->expression->insert(numString);
+}
 
-    QString displayVal = ui->Display->text();
+void Calculator::operationButtonClicked()
+{
+    QString oprString = QObject::sender()->objectName().remove("expr_");
 
-    if((displayVal.toDouble()==0 || displayVal.toDouble()==0.0)){
-        ui->Display->setText(butVal);
-    } else {
-        QString newVal = displayVal + butVal;
-        double dblNewVal = newVal.toDouble();
+    if(oprString == "add")
+        oprString = "+";
+    else if(oprString == "sub")
+        oprString = "-";
+    else if(oprString == "mul")
+        oprString = "*";
+    else if(oprString == "div")
+        oprString = "/";
 
-        ui->Display->setText(QString::number(dblNewVal, 'g', 16));
+    if(clear)
+    {
+        clear = false;
+        ui->expression->clear();
+    }
+    ui->expression->insert(oprString);
+}
+
+void Calculator::parenthesisButtonClicked()
+{
+    QString parenString = QObject::sender()->objectName().remove("paren_");
+
+    if(parenString == "begin")
+        parenString = "(";
+    else if(parenString == "end")
+        parenString = ")";
+
+    if(clear)
+    {
+        clear = false;
+        ui->expression->clear();
+    }
+    ui->expression->insert(parenString);
+}
+
+void Calculator::functionButtonClicked()
+{
+    QString funcName = QObject::sender()->objectName().remove("func_");
+
+    if(clear)
+    {
+        clear = false;
+        ui->expression->clear();
+    }
+
+    ui->expression->insert(funcName + "(");
+}
+
+void Calculator::removeLastChar()
+{
+    QString exprStr = ui->expression->text();
+    exprStr.remove(exprStr.length()-1, 1);
+    ui->expression->setText(exprStr);
+}
+
+void Calculator::powerButtonClicked()
+{
+    QString powName = QObject::sender()->objectName().remove("pow_");
+
+    if(powName == "2")
+        powName = "^2";
+    else if(powName == "3")
+        powName = "^3";
+    else if(powName == "n")
+        powName = "^";
+    else if(powName == "half")
+        powName = "^0.5";
+    else if(powName == "minus_one")
+        powName = "^-1";
+
+    if(clear)
+    {
+        clear = false;
+        ui->expression->clear();
+    }
+
+    ui->expression->insert(powName);
+}
+
+void Calculator::acButtonClicked()
+{
+    clear = false;
+    ui->expression->clear();
+    ui->result->setText(0);
+    ui->memory->setDisabled(true);
+    memory = 0;
+}
+
+void Calculator::memoryButtonClicked()
+{
+    QString memStr = QObject::sender()->objectName().remove("memory_");
+
+    if(memStr == "clear")
+    {
+        ui->memory->setDisabled(true);
+        memory = 0;
+    }
+    else if(memStr == "save")
+    {
+        memory = ui->result->text().toDouble();
+        ui->memory->setEnabled(true);
+    }
+    else if(memStr == "recall")
+    {
+        ui->expression->insert(QString::number(memory));
+    }
+
+    if(clear)
+    {
+        clear = false;
+        ui->expression->clear();
     }
 }
 
-void Calculator::MathButtonPressed(){
-    divTrigger = false;
-    multTrigger = false;
-    addTrigger = false;
-    subTrigger = false;
+void Calculator::factButtonClicked()
+{
+    ui->expression->insert("!");
 
-    QString displayVal = ui->Display->text();
-    calcVal = displayVal.toDouble();
-
-    QPushButton *button = (QPushButton *)sender();
-
-    QString butVal = button->text();
-
-    if(QString::compare(butVal, "/", Qt::CaseInsensitive) == 0){
-        divTrigger = true;
-    } else if(QString::compare(butVal, "*", Qt::CaseInsensitive) == 0){
-        multTrigger = true;
-    } else if(QString::compare(butVal, "+", Qt::CaseInsensitive) == 0){
-        addTrigger = true;
-    } else {
-        subTrigger = true;
+    if(clear)
+    {
+        clear = false;
+        ui->expression->clear();
     }
-
-    ui->Display->setText("");
 }
 
-void Calculator::EqualButtonPressed(){
-    double solution = 0.0;
+void Calculator::dotButtonClicked()
+{
+    ui->expression->insert(".");
 
-    QString displayVal = ui->Display->text();
-    double dblDisplayVal = displayVal.toDouble();
+    if(clear)
+    {
+        clear = false;
+        ui->expression->clear();
+    }
+}
 
-    QPushButton *button = (QPushButton *)sender();
+void Calculator::evaluate()
+{
+    try
+    {
+        QRegularExpression re("(\\d)*!");
+        QString expr = ui->expression->text();
 
-    QString butVal = button->text();
+        QRegularExpressionMatch match = re.match(expr);
 
-    if(addTrigger || subTrigger || multTrigger || divTrigger){
-        if(addTrigger){
-            solution = calcVal + dblDisplayVal;
-        } else if(subTrigger){
-            solution = calcVal - dblDisplayVal;
-        } else if(multTrigger){
-            solution = calcVal * dblDisplayVal;
-        } else {
-            solution = calcVal / dblDisplayVal;
+        if (match.hasMatch())
+        {
+            QString cap = match.captured(0);
+            QString capBackup = cap;
+
+            int num = cap.remove("!").toInt();
+            unsigned long long int fact = 1;
+
+            for(int i=2; i<=num; i++)
+                fact *= i;
+
+            expr.replace(capBackup, QString::number(fact));
         }
+
+        double value = parser.parse(expr.toStdString()).evaluate();
+        //qDebug() << value;
+        ui->result->setText(QString::number(value));
+    }
+    catch(Lepton::Exception e)
+    {
+        ui->result->setText("error");
     }
 
-    ui->Display->setText(QString::number(solution));
-}
-
-void Calculator::ChangeNumberSign(){
-    QString displayVal = ui->Display->text();
-
-    QRegExp reg("[-+]?[0-9.]*");
-
-    if(reg.exactMatch(displayVal)){
-        double dblDisplayVal = displayVal.toDouble();
-        double dblDisplayValSign = -1*dblDisplayVal;
-
-        ui->Display->setText(QString::number(dblDisplayValSign));
-    }
+    clear = true;
 }
